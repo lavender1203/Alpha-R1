@@ -1,0 +1,26 @@
+# qlib single-factor backtesting (Alpha101), used by scripts/run_factor_backtest.py
+
+# qlib binary data directory (produced by scripts/prepare_qlib_data.py)
+qlib_data_dir: ~/.qlib/qlib_data/alpha_r1
+
+# Universe / benchmark: qlib market name (csi300, csi1000, sp500, ...) or "all".
+# Self-converted data has no index membership lists, so use "all" there.
+market: all
+# Benchmark instrument for excess-return stats; set to null to disable.
+benchmark: null
+
+# Historical backtest window (paper Section 3.1.3)
+start_date: "2023-01-01"
+end_date: "2024-12-31"
+
+# Top-k equal-weight long portfolio per factor signal
+topk: 50
+
+# Forward-return horizon for IC (trading days)
+ic_horizon: 1
+
+# Transaction cost per side (0.001 = 10 bps charged on both sell and buy)
+fee: 0.001
+
+# Per-factor result JSON output (P_i performance vectors)
+output_dir: result/alpha_backtest

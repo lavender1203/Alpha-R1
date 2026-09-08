@@ -1,0 +1,21 @@
+# Alpha-R1 inference (factor selection), used by scripts/run_inference.py
+
+# Hugging Face model id or local path.
+model_id: FinStep/Alpha-R1
+
+# Backend: "hf" (transformers, default) or "vllm" (high-throughput batch)
+backend: hf
+
+# Deterministic decoding, aligned with the paper (Section 4.1.2)
+temperature: 0.0
+top_p: 0.7
+max_tokens: 12288
+
+# Device / dtype for the hf backend
+device_map: auto
+torch_dtype: bfloat16
+
+# At most 10 factors per decision day (paper Section 3.3)
+max_factors: 10
+
+output_dir: result/alpha_select

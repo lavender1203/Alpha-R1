@@ -1,0 +1,28 @@
+# Factor description generation via OpenRouter (paper Section 3.1.2 / 3.2.1)
+# Used by scripts/build_market_memory.py and scripts/generate_descriptions.py
+
+base_url: https://openrouter.ai/api/v1
+# API key comes from the OPENROUTER_API_KEY environment variable (see .env.example)
+
+# REQUIRED: OpenRouter model id, e.g. "anthropic/claude-3.7-sonnet".
+# Notes on model choice:
+#   - Per the paper (Appendix C), factor profiling and market state synthesis both
+#     use Claude 3.7 Sonnet, pinned to the dated snapshot claude-3-7-sonnet-20250219
+#     (pre-training cutoff 2024-11). Use the closest available OpenRouter id, e.g.
+#     anthropic/claude-3.7-sonnet.
+#   - The paper's RL judge model claude-3.5-haiku is retired on OpenRouter;
+#     current alternatives: anthropic/claude-3-haiku, anthropic/claude-haiku-4.5.
+model: ""
+
+temperature: 0.7
+max_tokens: 4096
+
+max_workers: 3
+max_retries: 5
+retry_delay: 2
+
+market_memory_dir: data/market_memory     # M_global.txt and weekly intermediates
+price_market_dir: data/price_market       # daily price description txt files
+news_dir: data/news                       # daily news description txt files
+backtest_dir: result/alpha_backtest       # P_i vectors from the qlib backtest
+output_dir: result/alpha_des              # generated alphaNNN.txt descriptions

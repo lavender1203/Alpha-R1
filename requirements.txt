@@ -1,0 +1,11 @@
+torch>=2.1
+transformers>=4.51
+accelerate>=0.20
+pandas>=2.0
+numpy>=1.24
+pyyaml>=6.0
+openai>=1.0
+python-dotenv>=1.0
+# Optional backends:
+#   vllm>=0.6        # high-throughput inference backend
+#   pyqlib>=0.9      # Alpha101 single-factor backtesting (requires Python <=3.12)

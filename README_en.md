@@ -16,17 +16,16 @@
 
 # Alpha-R1: Alpha Screening with LLM Reasoning via Reinforcement Learning
 
-> **Alpha-R1** 是一个面向量化 Alpha 筛选的推理增强型 LLM，基于 Qwen3-8B 通过 GRPO 强化学习训练。本仓库是论文
-> [Alpha-R1: Alpha Screening with LLM Reasoning via Reinforcement Learning](https://arxiv.org/abs/2512.23515)
-> 的配套实现。
+> **Alpha-R1** is a reasoning-enhanced LLM for quantitative alpha selection, trained with GRPO reinforcement learning on top of Qwen3-8B. This repository is the companion implementation of the paper
+> [Alpha-R1: Alpha Screening with LLM Reasoning via Reinforcement Learning](https://arxiv.org/abs/2512.23515).
 
-## Overview (项目概览)
+## Overview
 
 <p align="center">
   <img src="assets/framework.png" alt="Alpha-R1 framework overview" style="width: 100%;">
 </p>
 
-Alpha-R1 从 [Alpha101](https://arxiv.org/abs/1601.00991) 候选因子池中筛选因子。它不把 alpha 当作裸的时间序列，而是基于**语义化的因子描述**进行推理——每个因子如何起作用、何时有效、何时失效——并激活与当前市场环境相匹配的因子：
+Alpha-R1 screens a candidate pool of [Alpha101](https://arxiv.org/abs/1601.00991) factors. Instead of treating alphas as bare time series, it reasons over **semantic factor descriptions** — how each factor works, when it works, and when it fails — and activates the factors that fit current market conditions:
 
 ```
 qlib single-factor backtest (P_i) ─┐
@@ -40,13 +39,13 @@ market memory (M_global) ──────────┘                 │
                        end-to-end strategy backtest (NAV, AR/SR/MDD)
 ```
 
-1. **单因子回测**（论文 §3.1.3）：每个 Alpha101 因子在 qlib 上评估——因子值、IC/RankIC 与 top-k 组合——并保存为绩效向量 `P_i`。
-2. **因子描述生成**（§3.1.2/§3.2.1）：LLM（经由 OpenRouter）将每日行情/新闻文本迭代聚合为全局市场记忆 `M_global`，再将 `M_global + P_i` 映射为每个因子的结构化描述 `α_des`。
-3. **Alpha-R1 推理**（§3.3）：因子描述拼接为决策上下文 prompt，模型以 `<alpha_list>...</alpha_list>` 输出所选因子。
-4. **输出解析**：对响应进行校验，并解析为 `selections.json` / `summary.csv`。
-5. **策略回测**（§3.3，附录 F）：用固定的线性模型按所选因子为股票打分，按论文的执行协议（槽位轮换、VWAP 成交、手续费）产出净值曲线与指标。
+1. **Single-factor backtesting** (paper §3.1.3): each Alpha101 factor is evaluated on qlib — factor values, IC/RankIC, and a top-k portfolio — and saved as a performance vector `P_i`.
+2. **Factor description generation** (§3.1.2/§3.2.1): an LLM (via OpenRouter) iteratively aggregates daily price/news text into a global market memory `M_global`, then maps `M_global + P_i` into a structured description `α_des` per factor.
+3. **Alpha-R1 inference** (§3.3): descriptions are concatenated into the decision-context prompt; the model outputs the selected factors in `<alpha_list>...</alpha_list>`.
+4. **Output parsing**: responses are validated and parsed into `selections.json` / `summary.csv`.
+5. **Strategy backtest** (§3.3, Appendix F): a fixed linear model scores stocks with the selected factors, and the paper's execution protocol (slot rotation, VWAP fills, fees) produces the NAV curve and metrics.
 
-## Installation (安装)
+## Installation
 
 ```bash
 pip install -e .            # core (transformers inference + generation + parsing)
@@ -54,36 +53,36 @@ pip install -e .[vllm]      # optional high-throughput inference backend
 pip install -e .[qlib]      # optional backtesting (pyqlib)
 ```
 
-API 密钥（见 `.env.example`）：
+API keys (see `.env.example`):
 
 ```bash
 export OPENROUTER_API_KEY=...   # description generation
 export HF_TOKEN=...             # optional (e.g. for gated/private mirrors)
 ```
 
-## Usage (使用方法)
+## Usage
 
-所有步骤的默认参数均从 `configs/` 读取。
+All steps read their defaults from `configs/`.
 
-### 1. Single-factor backtests (单因子回测)
+### 1. Single-factor backtests
 
 ```bash
 python scripts/prepare_qlib_data.py --csv-dir data/stock_data --qlib-dir ~/.qlib/qlib_data/alpha_r1
 python scripts/run_factor_backtest.py --alphas all
 ```
 
-每个因子输出 `result/alpha_backtest/alphaNNN.json`。数据目录结构约定见 `data/README.md`。
+Writes `result/alpha_backtest/alphaNNN.json` per factor. See `data/README.md` for data layout conventions.
 
-### 2. Factor descriptions (因子描述生成)
+### 2. Factor descriptions
 
 ```bash
 python scripts/build_market_memory.py --start-date 2023-01-01 --end-date 2024-12-31
 python scripts/generate_descriptions.py --model "anthropic/claude-3.7-sonnet" --alphas all
 ```
 
-`configs/generation.yaml` 中的 OpenRouter 模型 id 特意留空——请在配置中填写，或通过 `--model` 传入。输出 `data/market_memory/M_global.txt` 与 `result/alpha_des/alphaNNN.txt`。
+The OpenRouter model id is intentionally left blank in `configs/generation.yaml` — set it there or pass `--model`. Writes `data/market_memory/M_global.txt` and `result/alpha_des/alphaNNN.txt`.
 
-### 3. Alpha-R1 inference (Alpha-R1 推理)
+### 3. Alpha-R1 inference
 
 ```bash
 python scripts/run_inference.py \
@@ -91,19 +90,19 @@ python scripts/run_inference.py \
     --start-date 2025-01-01 --end-date 2025-12-31
 ```
 
-通过 `from_pretrained` 加载 `FinStep/Alpha-R1`（默认 `hf` 后端；在 `configs/inference.yaml` 中设置 `backend: vllm` 可切换为 vLLM）。解码默认 `temperature=0, top_p=0.7`，与论文一致。输出 `result/alpha_select/result_YYYYMMDD.json`。无真实数据时，可用 `--factor-des-dir examples/factor_descriptions` 做最小冒烟运行。
+Loads `FinStep/Alpha-R1` via `from_pretrained` (default `hf` backend; set `backend: vllm` in `configs/inference.yaml` to switch to vLLM). Decoding defaults to `temperature=0, top_p=0.7` as in the paper. Writes `result/alpha_select/result_YYYYMMDD.json`. A minimal smoke run without real data works with `--factor-des-dir examples/factor_descriptions`.
 
-决策日默认为给定区间内的工作日（交易日历的近似）；传入 `--market-state-dir` 可限制为实际有行情数据的日期。
+Decision days default to weekdays in the given range (a trading-calendar approximation); pass `--market-state-dir` to restrict to days that actually have market data.
 
-### 4. Parse outputs (输出解析)
+### 4. Parse outputs
 
 ```bash
 python scripts/parse_outputs.py --result-dir result/alpha_select
 ```
 
-输出 `selections.json`（日期 → 因子列表）与 `summary.csv`，并报告格式非法的日期。
+Writes `selections.json` (date → factor list) and `summary.csv`, and reports format-invalid days.
 
-### 5. Strategy backtest (端到端策略回测)
+### 5. Strategy backtest (end-to-end)
 
 ```bash
 # estimate the fixed linear model on the historical window (paper: 2020-2023)
@@ -114,11 +113,11 @@ python scripts/run_strategy_backtest.py \
     --betas result/linear_model/betas.csv
 ```
 
-将解析出的因子选择转化为可交易的 top-10 等权组合：资金在 `holding_days` 个槽位间轮换（每日再平衡一个槽位），成交价使用当日 `$vwap`（缺失时回退 `$close`），双边手续费 10 bps，闲置现金按无风险利率计息，决策日 t 使用 t-1 日的因子值打分。输出指标 JSON（AR / 超额 SR / MDD / Sortino / Calmar / IR，相对基准）与逐日净值 CSV 至 `configs/strategy.yaml: output_dir`。`--selections` 传入多轮选择文件目录时，会额外输出多轮平均结果。涨跌停过滤已实现但默认关闭（日线数据不含涨跌停标记；见 `configs/strategy.yaml`）。
+Turns parsed selections into a tradable top-10 equal-weight portfolio: capital rotates through `holding_days` slots (one slot rebalanced per day), fills use daily `$vwap` (falling back to `$close`), fees are 10 bps per side, idle cash earns the risk-free rate, and decision day t scores stocks with factor values of t-1. Writes metrics JSON (AR / excess SR / MDD / Sortino / Calmar / IR vs benchmark) and a daily NAV CSV to `configs/strategy.yaml: output_dir`. Passing a directory of per-round selections files as `--selections` additionally writes the multi-round average. Limit-lock filtering is available but off by default (daily data carries no limit flags; see `configs/strategy.yaml`).
 
-## Results (实验结果)
+## Results
 
-主实验结果（论文 Table 1；12 个月样本外测试区间 2025-01-01 至 2025-12-31）。AR = 年化收益，SR = 超额夏普比率，MDD = 最大回撤。
+Main experiment results (paper Table 1; 12-month out-of-sample testing period 2025-01-01 to 2025-12-31). AR = annualized return, SR = excess Sharpe ratio, MDD = max drawdown.
 
 <p align="center">
   <img src="assets/main_result_sp500.png" alt="Backtest NAV comparison on the S&P 500 asset pool" style="width: 49%;">
@@ -128,8 +127,8 @@ python scripts/run_strategy_backtest.py \
 <table>
   <thead>
     <tr>
-      <th rowspan="2">类型</th>
-      <th rowspan="2" width="160">方法</th>
+      <th rowspan="2">Type</th>
+      <th rowspan="2" width="160">Method</th>
       <th colspan="3">S&amp;P 500</th>
       <th colspan="3">CSI 300</th>
     </tr>
@@ -160,13 +159,13 @@ python scripts/run_strategy_backtest.py \
   </tbody>
 </table>
 
-在域外股票池上无需重训：Alpha-R1 在 Russell 2000 上达到 80.54% AR（SR 2.46），在 CSI 1000 上达到 73.52% AR（SR 2.80）（论文 Table 2）。
+On out-of-domain universes without retraining, Alpha-R1 reaches 80.54% AR (SR 2.46) on Russell 2000 and 73.52% AR (SR 2.80) on CSI 1000 (paper Table 2).
 
-## Training (训练)
+## Training
 
-Alpha-R1 基于 Qwen3-8B，使用 [verl](https://github.com/volcengine/verl) 以 GRPO 与市场反馈奖励训练（论文 Section 3.4）。`training/` 包含训练配置（`configs/grpo_alpha_r1.yaml`）与奖励的简化参考实现（`reward.py`），可通过 verl 的 `custom_reward_function` 机制接入。详见 `training/README.md`。
+Alpha-R1 is trained with GRPO on Qwen3-8B using [verl](https://github.com/volcengine/verl) and a market-feedback reward (paper Section 3.4). `training/` contains the training configuration (`configs/grpo_alpha_r1.yaml`) and a simplified reference implementation of the reward (`reward.py`), pluggable via verl's `custom_reward_function` mechanism. See `training/README.md` for details.
 
-## Repository layout (仓库结构)
+## Repository layout
 
 ```
 src/alpha_r1/
@@ -183,7 +182,7 @@ data/              raw data lives here (gitignored, see data/README.md)
 examples/          minimal example inputs
 ```
 
-## Citation (引用)
+## Citation
 
 ```bibtex
 @article{jiang2025alphar1,
@@ -194,15 +193,15 @@ examples/          minimal example inputs
 }
 ```
 
-## License (开源协议)
+## License
 
-本项目基于 [MIT License](https://opensource.org/licenses/MIT) 发布。
+This project is released under the [MIT License](https://opensource.org/licenses/MIT).
 
-## 📅 Roadmap & Updates (路线图与更新)
+## 📅 Roadmap & Updates
 
-- **[2025.12]** 📄 论文发布于 [arXiv](https://arxiv.org/abs/2512.23515)。
-- **[2026.09]** 🧩 代码发布：qlib 单因子回测、因子描述生成（OpenRouter）、Alpha-R1 推理、输出解析、端到端策略回测，以及 GRPO 训练配置 + 参考奖励实现。
-  - ✅ 推理代码（Alpha Screening Pipeline）
-  - ✅ 模型权重（[`FinStep/Alpha-R1`](https://huggingface.co/FinStep/Alpha-R1)）
+- **[2025.12]** 📄 Paper released on [arXiv](https://arxiv.org/abs/2512.23515).
+- **[2026.09]** 🧩 Code release: qlib single-factor backtests, factor description generation (OpenRouter), Alpha-R1 inference, output parsing, end-to-end strategy backtest, and the GRPO training config + reference reward.
+  - ✅ Inference code (Alpha Screening Pipeline)
+  - ✅ Model weights ([`FinStep/Alpha-R1`](https://huggingface.co/FinStep/Alpha-R1))
 
-*欢迎 ⭐ Star 本仓库，获取最新进展！*
+*Please ⭐ Star this repo to stay updated!*
